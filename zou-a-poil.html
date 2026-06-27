@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Zou à Poil !</title>
+<style>
+  :root{
+    --cream:#FBF1DF;
+    --orange:#D97B29;
+    --orange-dark:#B5601C;
+    --orange-light:#F2B66D;
+    --skin:#F7D9C4;
+    --ink:#3B2A1E;
+    --green:#3E8E5A;
+    --green-dark:#2E6E43;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{
+    margin:0; height:100%;
+    background:var(--cream);
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    color:var(--ink);
+    overflow:hidden;
+    touch-action:none;
+  }
+  .stage{
+    position:relative;
+    width:100%; height:100%;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:flex-start;
+  }
+  /* Hand-drawn-ish wavy title */
+  h1.title{
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive;
+    font-size: clamp(2rem, 9vw, 3.2rem);
+    color:var(--orange-dark);
+    text-shadow: 2px 2px 0 var(--cream), 3px 3px 0 var(--orange-light);
+    margin: 0.4em 0 0.1em 0;
+    letter-spacing: 1px;
+    transform: rotate(-2deg);
+  }
+  .tagline{
+    font-size: clamp(0.95rem, 3vw, 1.15rem);
+    color:#7a5a3a;
+    margin: 0 0 0.6em 0;
+    text-align:center;
+    max-width: 90%;
+  }
+  .panel{
+    background: #fff8ec;
+    border: 3px solid var(--orange);
+    border-radius: 22px;
+    box-shadow: 0 6px 0 var(--orange-dark), 0 10px 18px rgba(0,0,0,0.15);
+    padding: 1.4em 1.6em;
+    text-align:center;
+    max-width: 380px;
+    width: 88%;
+  }
+  button{
+    font-family: inherit;
+    font-weight:bold;
+    font-size: 1.15rem;
+    color:#fff;
+    background: var(--green);
+    border:none;
+    border-radius: 14px;
+    padding: 0.7em 1.6em;
+    margin-top: 0.8em;
+    cursor:pointer;
+    box-shadow: 0 4px 0 var(--green-dark);
+    transition: transform 0.08s;
+  }
+  button:active{ transform: translateY(3px); box-shadow: 0 1px 0 var(--green-dark); }
+  button.secondary{
+    background: var(--orange);
+    box-shadow: 0 4px 0 var(--orange-dark);
+  }
+  #hud{
+    display:flex; justify-content:space-between; align-items:center;
+    width: min(420px, 92%);
+    margin: 0.3em auto 0.2em auto;
+    font-weight:bold;
+    font-size: 1.05rem;
+    color: var(--orange-dark);
+  }
+  #hud .chip{
+    background:#fff8ec;
+    border:2px solid var(--orange);
+    border-radius: 10px;
+    padding: 0.25em 0.7em;
+  }
+  #progressWrap{
+    width: min(420px, 92%);
+    height: 12px;
+    background: #ecd9bb;
+    border-radius: 8px;
+    overflow:hidden;
+    margin: 0 auto 0.4em auto;
+    border: 2px solid var(--orange);
+  }
+  #progressBar{
+    height:100%;
+    width:0%;
+    background: var(--green);
+    transition: width 0.15s;
+  }
+  canvas{
+    touch-action:none;
+    cursor: none;
+    display:block;
+    margin: 0 auto;
+    border-radius: 18px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+    background: #fdf6e8;
+  }
+  .screen{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center;
+    padding: 1em;
+  }
+  .hidden{ display:none !important; }
+  #wrapCanvas{ position:relative; }
+  .footnote{
+    font-size:0.85rem;
+    color:#9b7c57;
+    margin-top: 0.6em;
+  }
+  .bigEmoji{ font-size: 2.6rem; margin-bottom:0.2em; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- START SCREEN -->
+  <div class="screen" id="screenStart">
+    <h1 class="title">Zou à Poil !</h1>
+    <p class="tagline">Zou le chat roux a des touffes de poil rebelles partout sur le dos.<br>Glisse ton doigt sur chaque touffe pour le raser... le plus vite possible !</p>
+    <div class="panel">
+      <div class="bigEmoji">🐱✂️</div>
+      <p style="margin:0.2em 0 0 0;">3 manches. De plus en plus de touffes.<br>Vise le meilleur temps !</p>
+      <button id="btnStart">Raser Zou</button>
+    </div>
+    <p class="footnote">Astuce : fais glisser ton doigt (ou la souris) directement sur les touffes.</p>
+  </div>
+
+  <!-- LEVEL INTRO SCREEN -->
+  <div class="screen hidden" id="screenLevelIntro">
+    <h1 class="title" style="font-size:clamp(1.6rem,7vw,2.4rem)">Manche <span id="levelNumDisplay">1</span></h1>
+    <div class="panel">
+      <p id="levelIntroText" style="margin:0;">8 touffes à raser. C'est parti !</p>
+      <button id="btnLevelGo">Go !</button>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div class="screen hidden" id="screenGame" style="justify-content:flex-start; padding-top:0.5em;">
+    <div id="hud">
+      <div class="chip">⏱️ <span id="timerDisplay">0.0</span> s</div>
+      <div class="chip">Manche <span id="hudLevel">1</span>/3</div>
+      <div class="chip">🪮 <span id="tuftsLeft">8</span></div>
+    </div>
+    <div id="progressWrap"><div id="progressBar"></div></div>
+    <div id="wrapCanvas">
+      <canvas id="game"></canvas>
+    </div>
+  </div>
+
+  <!-- LEVEL COMPLETE SCREEN -->
+  <div class="screen hidden" id="screenLevelDone">
+    <div class="bigEmoji">😼✨</div>
+    <h1 class="title" style="font-size:clamp(1.6rem,7vw,2.2rem)">Manche terminée !</h1>
+    <div class="panel">
+      <p id="levelDoneText" style="margin:0;">Temps : 0.0 s</p>
+      <button id="btnNextLevel">Manche suivante</button>
+    </div>
+  </div>
+
+  <!-- GAME OVER / FINAL SCREEN -->
+  <div class="screen hidden" id="screenFinal">
+    <div class="bigEmoji" id="finalEmoji">🏆</div>
+    <h1 class="title" style="font-size:clamp(1.8rem,8vw,2.6rem)">Zou est tout lisse !</h1>
+    <div class="panel">
+      <p id="finalRank" style="font-weight:bold; font-size:1.2rem; margin:0 0 0.3em 0;">Titre : ...</p>
+      <p id="finalTime" style="margin:0;">Temps total : 0.0 s</p>
+      <p id="finalQuip" style="margin:0.6em 0 0 0; color:#7a5a3a; font-style:italic;"></p>
+      <button id="btnReplay">Rejouer</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Config ----------
+  const LEVELS = [
+    { tufts: 8,  shaveRadius: 26 },
+    { tufts: 13, shaveRadius: 23 },
+    { tufts: 18, shaveRadius: 21 }
+  ];
+
+  const COLORS = {
+    body: '#D97B29',
+    bodyShade: '#C66E1F',
+    stripe: '#A85618',
+    head: '#DC8332',
+    ear: '#C66E1F',
+    earInner: '#F2A9A0',
+    skin: '#F7D9C4',
+    skinShade: '#EFC3A5',
+    tuftBase: '#F2B66D',
+    tuftDark: '#E29A45',
+    eyeWhite: '#FFFFFF',
+    iris: '#7DBF4B',
+    pupil: '#2B2118',
+    nose: '#D9788A',
+    whisker: '#5a4631'
+  };
+
+  // ---------- State ----------
+  let canvas, ctx;
+  let cw = 0, ch = 0, dpr = 1;
+  let currentLevel = 0;
+  let tufts = [];
+  let pointerActive = false;
+  let pointerX = -1000, pointerY = -1000;
+  let levelStartTime = 0;
+  let elapsed = 0;
+  let rafId = null;
+  let levelTimes = [];
+  let sparkles = []; // little particle bursts when a tuft is shaved
+  let totalTuftsThisLevel = 0;
+
+  // Zones (relative 0..1 of canvas) where tufts may appear: body + head sides + tail, avoiding the face.
+  // Defined in normalized "design space" 400x520, will scale to actual canvas.
+  const DESIGN_W = 400, DESIGN_H = 520;
+
+  const ZONES = [
+    // body (big oval)
+    { cx:200, cy:330, rx:135, ry:150, weight:5 },
+    // head sides (avoid center face)
+    { cx:120, cy:150, rx:55, ry:60, weight:2 },
+    { cx:280, cy:150, rx:55, ry:60, weight:2 },
+    { cx:200, cy:110, rx:60, ry:35, weight:1.5 }, // top of head
+    // tail
+    { cx:330, cy:380, rx:55, ry:90, weight:2.5 }
+  ];
+
+  // Face exclusion box (design space) - keep this clean of tufts
+  const FACE_EXCLUDE = { x:140, y:140, w:120, h:90 };
+
+  function rand(min, max){ return Math.random()*(max-min)+min; }
+
+  function pickWeightedZone(){
+    const total = ZONES.reduce((s,z)=>s+z.weight,0);
+    let r = Math.random()*total;
+    for(const z of ZONES){
+      if(r < z.weight) return z;
+      r -= z.weight;
+    }
+    return ZONES[0];
+  }
+
+  function randomPointInEllipse(z){
+    // uniform-ish random point inside ellipse
+    const t = Math.random()*Math.PI*2;
+    const u = Math.sqrt(Math.random());
+    const x = z.cx + z.rx*u*Math.cos(t);
+    const y = z.cy + z.ry*u*Math.sin(t);
+    return {x,y};
+  }
+
+  function inFaceExclusion(x,y){
+    return x > FACE_EXCLUDE.x && x < FACE_EXCLUDE.x+FACE_EXCLUDE.w &&
+           y > FACE_EXCLUDE.y && y < FACE_EXCLUDE.y+FACE_EXCLUDE.h;
+  }
+
+  function generateTufts(n){
+    const list = [];
+    let attempts = 0;
+    while(list.length < n && attempts < n*200){
+      attempts++;
+      const z = pickWeightedZone();
+      const p = randomPointInEllipse(z);
+      if(inFaceExclusion(p.x,p.y)) continue;
+      // min distance from existing tufts
+      let ok = true;
+      for(const t of list){
+        const d = Math.hypot(t.x-p.x, t.y-p.y);
+        if(d < 34){ ok = false; break; }
+      }
+      if(!ok) continue;
+      list.push({
+        x: p.x, y: p.y,
+        rot: rand(0, Math.PI*2),
+        scale: rand(0.85, 1.25),
+        removed: false
+      });
+    }
+    return list;
+  }
+
+  // ---------- Canvas sizing ----------
+  function sizeCanvas(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const maxW = Math.min(window.innerWidth*0.94, 420);
+    const maxHAvail = window.innerHeight - 170; // leave room for HUD
+    const aspect = DESIGN_H/DESIGN_W;
+    let w = maxW;
+    let h = w*aspect;
+    if(h > maxHAvail){
+      h = maxHAvail;
+      w = h/aspect;
+    }
+    cw = Math.round(w); ch = Math.round(h);
+    canvas.style.width = cw+'px';
+    canvas.style.height = ch+'px';
+    canvas.width = Math.round(cw*dpr);
+    canvas.height = Math.round(ch*dpr);
+    ctx.setTransform(dpr*(cw/DESIGN_W), 0, 0, dpr*(ch/DESIGN_H), 0, 0);
+  }
+
+  // ---------- Drawing helpers ----------
+  function drawEllipse(x,y,rx,ry,fill){
+    ctx.beginPath();
+    ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+
+  function drawStripe(x1,y1,x2,y2,cx,cy,w){
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.quadraticCurveTo(cx,cy,x2,y2);
+    ctx.strokeStyle = COLORS.stripe;
+    ctx.lineWidth = w;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.55;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  function drawCatBase(){
+    ctx.clearRect(0,0,DESIGN_W,DESIGN_H);
+
+    // ground shadow
+    ctx.beginPath();
+    ctx.ellipse(200, 470, 150, 24, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(120,90,50,0.18)';
+    ctx.fill();
+
+    // tail (behind body)
+    ctx.save();
+    ctx.translate(330,380);
+    ctx.rotate(0.35);
+    drawEllipse(0,0,32,95,COLORS.body);
+    ctx.restore();
+    // tail stripes
+    drawStripe(345,310,345,330,365,320,7);
+    drawStripe(340,350,340,370,362,360,7);
+    drawStripe(330,390,330,410,355,400,7);
+
+    // back paws hint
+    drawEllipse(120,455,34,20,COLORS.body);
+    drawEllipse(255,460,34,20,COLORS.body);
+
+    // body
+    drawEllipse(200,335,140,150,COLORS.body);
+    // belly lighter patch
+    drawEllipse(205,395,75,80,'#E69A52');
+
+    // body stripes
+    drawStripe(90,240,90,300,70,270,9);
+    drawStripe(310,240,310,300,330,270,9);
+    drawStripe(120,220,140,260,110,240,8);
+    drawStripe(280,220,260,260,290,240,8);
+
+    // front paws
+    drawEllipse(160,470,26,22,COLORS.skin);
+    drawEllipse(240,470,26,22,COLORS.skin);
+    drawStripe(150,455,150,480,140,468,3);
+    drawStripe(170,455,170,480,160,468,3);
+    drawStripe(230,455,230,480,220,468,3);
+    drawStripe(250,455,250,480,240,468,3);
+
+    // ears (behind head, drawn first)
+    drawEllipse(135,95,28,34,COLORS.ear);
+    drawEllipse(265,95,28,34,COLORS.ear);
+    ctx.save();
+    ctx.translate(135,100); ctx.rotate(0);
+    ctx.beginPath(); ctx.ellipse(0,0,14,18,0,0,Math.PI*2);
+    ctx.fillStyle = COLORS.earInner; ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(265,100);
+    ctx.beginPath(); ctx.ellipse(0,0,14,18,0,0,Math.PI*2);
+    ctx.fillStyle = COLORS.earInner; ctx.fill();
+    ctx.restore();
+
+    // head
+    drawEllipse(200,150,98,90,COLORS.head);
+
+    // head stripes (forehead "M")
+    ctx.beginPath();
+    ctx.moveTo(170,80);
+    ctx.lineTo(185,100);
+    ctx.lineTo(200,82);
+    ctx.lineTo(215,100);
+    ctx.lineTo(230,80);
+    ctx.strokeStyle = COLORS.stripe;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = 0.6;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    drawStripe(150,120,140,140,140,128,6);
+    drawStripe(250,120,260,140,260,128,6);
+  }
+
+  function drawFace(){
+    // cheeks
+    drawEllipse(155,175,26,18,'#FFFFFF');
+    drawEllipse(245,175,26,18,'#FFFFFF');
+
+    // eyes
+    function eye(x,y){
+      ctx.beginPath();
+      ctx.ellipse(x,y,16,18,0,0,Math.PI*2);
+      ctx.fillStyle = COLORS.eyeWhite;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x,y+1,9,11,0,0,Math.PI*2);
+      ctx.fillStyle = COLORS.iris;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x,y+1,4,9,0,0,Math.PI*2);
+      ctx.fillStyle = COLORS.pupil;
+      ctx.fill();
+      // sparkle
+      ctx.beginPath();
+      ctx.arc(x-3,y-4,2,0,Math.PI*2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+    }
+    eye(168,150);
+    eye(232,150);
+
+    // nose
+    ctx.beginPath();
+    ctx.moveTo(200,170);
+    ctx.lineTo(192,180);
+    ctx.lineTo(208,180);
+    ctx.closePath();
+    ctx.fillStyle = COLORS.nose;
+    ctx.fill();
+
+    // mouth
+    ctx.beginPath();
+    ctx.moveTo(200,181);
+    ctx.lineTo(200,190);
+    ctx.moveTo(200,190);
+    ctx.quadraticCurveTo(188,200,178,193);
+    ctx.moveTo(200,190);
+    ctx.quadraticCurveTo(212,200,222,193);
+    ctx.strokeStyle = COLORS.whisker;
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // whiskers
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = 'rgba(90,70,49,0.7)';
+    [[-1,178,165],[-1,182,172],[-1,178,180]].forEach(([dir,wy,wx])=>{
+      ctx.beginPath();
+      ctx.moveTo(150,wy);
+      ctx.lineTo(150-34,wy-4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(250,wy);
+      ctx.lineTo(250+34,wy-4);
+      ctx.stroke();
+    });
+  }
+
+  function drawShavedPatches(){
+    for(const t of tufts){
+      if(!t.removed) continue;
+      ctx.save();
+      ctx.translate(t.x,t.y);
+      ctx.rotate(t.rot);
+      const s = t.scale;
+      drawEllipse(0,0,16*s,12*s, COLORS.skin);
+      // little stubble marks
+      ctx.strokeStyle = COLORS.skinShade;
+      ctx.lineWidth = 1.4;
+      for(let i=0;i<4;i++){
+        const a = (i/4)*Math.PI*2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a)*4*s, Math.sin(a)*3*s);
+        ctx.lineTo(Math.cos(a)*8*s, Math.sin(a)*6*s);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawTuft(t){
+    ctx.save();
+    ctx.translate(t.x,t.y);
+    ctx.rotate(t.rot);
+    const s = t.scale;
+    // fluffy cluster: a base blob + spiky tips
+    drawEllipse(0,0,15*s,11*s, COLORS.tuftBase);
+    const spikes = 6;
+    for(let i=0;i<spikes;i++){
+      const a = (i/spikes)*Math.PI*2 + t.rot*0.3;
+      const len = (10+ (i%2)*5)*s;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*4*s, Math.sin(a)*3*s);
+      ctx.quadraticCurveTo(
+        Math.cos(a+0.15)*len*0.7, Math.sin(a+0.15)*len*0.7,
+        Math.cos(a)*len, Math.sin(a)*len*0.8
+      );
+      ctx.lineWidth = 3.2*s;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = i%2===0 ? COLORS.tuftBase : COLORS.tuftDark;
+      ctx.stroke();
+    }
+    drawEllipse(0,0,7*s,5*s, COLORS.tuftDark);
+    ctx.restore();
+  }
+
+  function drawSparkles(dt){
+    for(let i=sparkles.length-1;i>=0;i--){
+      const sp = sparkles[i];
+      sp.life -= dt;
+      if(sp.life<=0){ sparkles.splice(i,1); continue; }
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, sp.life/sp.maxLife);
+      ctx.translate(sp.x,sp.y);
+      ctx.rotate(sp.rot);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      const r = 6*(sp.life/sp.maxLife);
+      ctx.moveTo(0,-r); ctx.lineTo(r*0.3,0); ctx.lineTo(0,r); ctx.lineTo(-r*0.3,0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      sp.x += sp.vx*dt; sp.y += sp.vy*dt;
+    }
+  }
+
+  function drawCursor(){
+    if(pointerX < -500) return;
+    ctx.save();
+    ctx.translate(pointerX,pointerY);
+    // simple razor icon: handle + blade
+    ctx.rotate(-0.5);
+    ctx.fillStyle = '#cfd6dc';
+    ctx.fillRect(-4,0,8,26);
+    ctx.fillStyle = '#8a939b';
+    ctx.beginPath();
+    ctx.moveTo(-10,-2);
+    ctx.lineTo(10,-2);
+    ctx.lineTo(7,-14);
+    ctx.lineTo(-7,-14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#eef3f6';
+    ctx.fillRect(-8,-3,16,3);
+    ctx.restore();
+  }
+
+  let lastFrameTime = performance.now();
+  function renderLoop(){
+    const now = performance.now();
+    const dt = Math.min((now-lastFrameTime)/1000, 0.05);
+    lastFrameTime = now;
+
+    drawCatBase();
+    drawShavedPatches();
+    for(const t of tufts){ if(!t.removed) drawTuft(t); }
+    drawFace();
+    drawSparkles(dt);
+    drawCursor();
+
+    if(!allShaved()){
+      elapsed = (now - levelStartTime)/1000;
+      timerDisplayEl.textContent = elapsed.toFixed(1);
+      rafId = requestAnimationFrame(renderLoop);
+    }
+  }
+
+  function allShaved(){
+    return tufts.every(t=>t.removed);
+  }
+
+  function addSparkle(x,y){
+    for(let i=0;i<6;i++){
+      const a = rand(0,Math.PI*2);
+      sparkles.push({
+        x,y, rot:a,
+        vx: Math.cos(a)*rand(20,50),
+        vy: Math.sin(a)*rand(20,50) - 20,
+        life: rand(0.3,0.55), maxLife: 0.5
+      });
+    }
+  }
+
+  // ---------- Pointer handling ----------
+  function getPos(evt){
+    const rect = canvas.getBoundingClientRect();
+    const clientX = evt.clientX !== undefined ? evt.clientX : (evt.touches && evt.touches[0].clientX);
+    const clientY = evt.clientY !== undefined ? evt.clientY : (evt.touches && evt.touches[0].clientY);
+    const xCss = clientX - rect.left;
+    const yCss = clientY - rect.top;
+    return {
+      x: xCss * (DESIGN_W/cw),
+      y: yCss * (DESIGN_H/ch)
+    };
+  }
+
+  function tryShaveAt(x,y){
+    const radius = LEVELS[currentLevel].shaveRadius;
+    let shavedAny = false;
+    for(const t of tufts){
+      if(t.removed) continue;
+      const d = Math.hypot(t.x-x, t.y-y);
+      if(d < radius){
+        t.removed = true;
+        shavedAny = true;
+        addSparkle(t.x,t.y);
+      }
+    }
+    if(shavedAny){
+      updateHud();
+      if(allShaved()) onLevelComplete();
+    }
+  }
+
+  function onPointerDown(e){
+    pointerActive = true;
+    const p = getPos(e);
+    pointerX = p.x; pointerY = p.y;
+    tryShaveAt(p.x,p.y);
+    e.preventDefault();
+  }
+  function onPointerMove(e){
+    const p = getPos(e);
+    pointerX = p.x; pointerY = p.y;
+    if(pointerActive) tryShaveAt(p.x,p.y);
+    e.preventDefault();
+  }
+  function onPointerUp(e){
+    pointerActive = false;
+  }
+
+  // ---------- HUD ----------
+  let timerDisplayEl, tuftsLeftEl, hudLevelEl, progressBarEl;
+
+  function updateHud(){
+    const left = tufts.filter(t=>!t.removed).length;
+    tuftsLeftEl.textContent = left;
+    const done = totalTuftsThisLevel - left;
+    progressBarEl.style.width = (done/totalTuftsThisLevel*100)+'%';
+  }
+
+  // ---------- Screens ----------
+  const screens = {};
+  function showScreen(id){
+    Object.values(screens).forEach(s=>s.classList.add('hidden'));
+    screens[id].classList.remove('hidden');
+  }
+
+  function startGame(){
+    currentLevel = 0;
+    levelTimes = [];
+    startLevel();
+  }
+
+  function startLevel(){
+    const cfg = LEVELS[currentLevel];
+    document.getElementById('levelNumDisplay').textContent = (currentLevel+1);
+    document.getElementById('levelIntroText').textContent =
+      cfg.tufts + ' touffes à raser. C\'est parti !';
+    showScreen('screenLevelIntro');
+  }
+
+  function beginPlay(){
+    const cfg = LEVELS[currentLevel];
+    tufts = generateTufts(cfg.tufts);
+    totalTuftsThisLevel = tufts.length;
+    sparkles = [];
+    pointerX = -1000; pointerY = -1000;
+    hudLevelEl.textContent = (currentLevel+1);
+    updateHud();
+    sizeCanvas();
+    showScreen('screenGame');
+    levelStartTime = performance.now();
+    lastFrameTime = levelStartTime;
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(renderLoop);
+  }
+
+  function onLevelComplete(){
+    if(rafId) cancelAnimationFrame(rafId);
+    const t = elapsed;
+    levelTimes.push(t);
+    document.getElementById('levelDoneText').textContent = 'Temps : ' + t.toFixed(1) + ' s';
+    showScreen('screenLevelDone');
+  }
+
+  function nextLevelOrFinish(){
+    currentLevel++;
+    if(currentLevel >= LEVELS.length){
+      finishGame();
+    } else {
+      startLevel();
+    }
+  }
+
+  function finishGame(){
+    const total = levelTimes.reduce((a,b)=>a+b,0);
+    document.getElementById('finalTime').textContent = 'Temps total : ' + total.toFixed(1) + ' s';
+    let rank, quip, emoji;
+    if(total < 18){
+      rank = '🏆 Maître Tondeur Suprême';
+      quip = 'Zou n\'a même pas eu le temps de miauler.';
+      emoji = '🏆';
+    } else if(total < 30){
+      rank = '🥈 Coiffeur Félin Pro';
+      quip = 'Propre, net, presque trop rapide.';
+      emoji = '✂️';
+    } else if(total < 45){
+      rank = '🥉 Apprenti Tondeur';
+      quip = 'Zou a eu le temps de faire une mini sieste.';
+      emoji = '🐾';
+    } else {
+      rank = '🐌 Tondeur du Dimanche';
+      quip = 'Zou a eu le temps de faire trois siestes et un café.';
+      emoji = '😴';
+    }
+    document.getElementById('finalRank').textContent = 'Titre : ' + rank;
+    document.getElementById('finalQuip').textContent = quip;
+    document.getElementById('finalEmoji').textContent = emoji;
+    showScreen('screenFinal');
+  }
+
+  // ---------- Init ----------
+  window.addEventListener('DOMContentLoaded', ()=>{
+    canvas = document.getElementById('game');
+    ctx = canvas.getContext('2d');
+
+    screens.screenStart = document.getElementById('screenStart');
+    screens.screenLevelIntro = document.getElementById('screenLevelIntro');
+    screens.screenGame = document.getElementById('screenGame');
+    screens.screenLevelDone = document.getElementById('screenLevelDone');
+    screens.screenFinal = document.getElementById('screenFinal');
+
+    timerDisplayEl = document.getElementById('timerDisplay');
+    tuftsLeftEl = document.getElementById('tuftsLeft');
+    hudLevelEl = document.getElementById('hudLevel');
+    progressBarEl = document.getElementById('progressBar');
+
+    document.getElementById('btnStart').addEventListener('click', startGame);
+    document.getElementById('btnLevelGo').addEventListener('click', beginPlay);
+    document.getElementById('btnNextLevel').addEventListener('click', nextLevelOrFinish);
+    document.getElementById('btnReplay').addEventListener('click', startGame);
+
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointerleave', ()=>{ pointerX=-1000; pointerY=-1000; });
+
+    window.addEventListener('resize', ()=>{
+      if(!screens.screenGame.classList.contains('hidden')) sizeCanvas();
+    });
+
+    showScreen('screenStart');
+  });
+})();
+</script>
+</body>
+</html>
