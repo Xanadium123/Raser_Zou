@@ -2,788 +2,673 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Zou à Poil !</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zou le Chat — Opération Toilettage !</title>
 <style>
-  :root{
-    --cream:#FBF1DF;
-    --orange:#D97B29;
-    --orange-dark:#B5601C;
-    --orange-light:#F2B66D;
-    --skin:#F7D9C4;
-    --ink:#3B2A1E;
-    --green:#3E8E5A;
-    --green-dark:#2E6E43;
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a0a2e; font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; overflow: hidden; }
+  #canvas-container { width: 100vw; height: 100vh; position: relative; }
+  canvas { display: block; }
+
+  #ui-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
   }
-  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body{
-    margin:0; height:100%;
-    background:var(--cream);
-    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-    color:var(--ink);
-    overflow:hidden;
-    touch-action:none;
+
+  #hud {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 20px; align-items: center; pointer-events: none;
   }
-  .stage{
-    position:relative;
-    width:100%; height:100%;
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:flex-start;
+
+  .hud-box {
+    background: rgba(255,220,100,0.95);
+    border: 3px solid #ff8c00;
+    border-radius: 16px;
+    padding: 8px 18px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #5a2000;
+    box-shadow: 0 4px 15px rgba(255,140,0,0.4);
   }
-  /* Hand-drawn-ish wavy title */
-  h1.title{
-    font-family: 'Comic Sans MS', 'Marker Felt', cursive;
-    font-size: clamp(2rem, 9vw, 3.2rem);
-    color:var(--orange-dark);
-    text-shadow: 2px 2px 0 var(--cream), 3px 3px 0 var(--orange-light);
-    margin: 0.4em 0 0.1em 0;
-    letter-spacing: 1px;
-    transform: rotate(-2deg);
+
+  #fur-bar-container {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    text-align: center; pointer-events: none;
   }
-  .tagline{
-    font-size: clamp(0.95rem, 3vw, 1.15rem);
-    color:#7a5a3a;
-    margin: 0 0 0.6em 0;
-    text-align:center;
-    max-width: 90%;
+  #fur-label {
+    color: #ffe066; font-size: 16px; margin-bottom: 6px;
+    text-shadow: 0 0 8px #ff8c00;
   }
-  .panel{
-    background: #fff8ec;
-    border: 3px solid var(--orange);
-    border-radius: 22px;
-    box-shadow: 0 6px 0 var(--orange-dark), 0 10px 18px rgba(0,0,0,0.15);
-    padding: 1.4em 1.6em;
-    text-align:center;
-    max-width: 380px;
-    width: 88%;
+  #fur-bar-bg {
+    width: 300px; height: 28px;
+    background: rgba(255,255,255,0.15);
+    border: 3px solid #ff8c00;
+    border-radius: 20px; overflow: hidden;
   }
-  button{
-    font-family: inherit;
-    font-weight:bold;
-    font-size: 1.15rem;
-    color:#fff;
-    background: var(--green);
-    border:none;
-    border-radius: 14px;
-    padding: 0.7em 1.6em;
-    margin-top: 0.8em;
-    cursor:pointer;
-    box-shadow: 0 4px 0 var(--green-dark);
-    transition: transform 0.08s;
+  #fur-bar {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, #ff6b35, #ff8c00, #ffb347);
+    border-radius: 20px;
+    transition: width 0.3s ease;
   }
-  button:active{ transform: translateY(3px); box-shadow: 0 1px 0 var(--green-dark); }
-  button.secondary{
-    background: var(--orange);
-    box-shadow: 0 4px 0 var(--orange-dark);
+
+  /* Message panel */
+  #message-panel {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(255,240,180,0.97);
+    border: 4px solid #ff8c00;
+    border-radius: 24px;
+    padding: 30px 40px;
+    text-align: center;
+    max-width: 480px;
+    box-shadow: 0 0 40px rgba(255,140,0,0.6);
+    pointer-events: all;
+    display: none;
   }
-  #hud{
-    display:flex; justify-content:space-between; align-items:center;
-    width: min(420px, 92%);
-    margin: 0.3em auto 0.2em auto;
-    font-weight:bold;
-    font-size: 1.05rem;
-    color: var(--orange-dark);
+  #message-panel h2 { font-size: 28px; color: #5a2000; margin-bottom: 12px; }
+  #message-panel p { font-size: 16px; color: #7a3a00; line-height: 1.6; margin-bottom: 18px; }
+  #message-panel button {
+    background: linear-gradient(135deg, #ff8c00, #ff6b35);
+    color: white; border: none; border-radius: 14px;
+    padding: 12px 30px; font-size: 18px; font-weight: bold;
+    cursor: pointer; font-family: inherit;
+    box-shadow: 0 4px 12px rgba(255,100,0,0.4);
+    transition: transform 0.1s;
   }
-  #hud .chip{
-    background:#fff8ec;
-    border:2px solid var(--orange);
-    border-radius: 10px;
-    padding: 0.25em 0.7em;
+  #message-panel button:hover { transform: scale(1.05); }
+
+  /* Scissors cursor hint */
+  #cursor-hint {
+    position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,220,100,0.7); font-size: 14px;
+    pointer-events: none;
   }
-  #progressWrap{
-    width: min(420px, 92%);
-    height: 12px;
-    background: #ecd9bb;
-    border-radius: 8px;
-    overflow:hidden;
-    margin: 0 auto 0.4em auto;
-    border: 2px solid var(--orange);
+
+  /* Floating hair particles */
+  .hair-pop {
+    position: absolute;
+    font-size: 22px;
+    pointer-events: none;
+    animation: hairFly 1.2s ease-out forwards;
   }
-  #progressBar{
-    height:100%;
-    width:0%;
-    background: var(--green);
-    transition: width 0.15s;
+  @keyframes hairFly {
+    0% { opacity: 1; transform: translate(0,0) scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3) rotate(360deg); }
   }
-  canvas{
-    touch-action:none;
-    cursor: none;
-    display:block;
-    margin: 0 auto;
-    border-radius: 18px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.18);
-    background: #fdf6e8;
+
+  /* Snore ZZZ */
+  #snore {
+    position: absolute; top: 30%; right: 25%;
+    font-size: 30px; color: #ffe066;
+    text-shadow: 0 0 12px #ff8c00;
+    animation: snoreFloat 2s infinite ease-in-out;
+    pointer-events: none; display: none;
   }
-  .screen{
-    position:absolute; inset:0;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center;
-    padding: 1em;
+  @keyframes snoreFloat {
+    0%,100% { transform: translateY(0) scale(1); opacity: 0.8; }
+    50% { transform: translateY(-20px) scale(1.2); opacity: 1; }
   }
-  .hidden{ display:none !important; }
-  #wrapCanvas{ position:relative; }
-  .footnote{
-    font-size:0.85rem;
-    color:#9b7c57;
-    margin-top: 0.6em;
+
+  #phase-label {
+    position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+    color: #ffe066; font-size: 13px; text-shadow: 0 0 8px #ff8c00;
+    pointer-events: none;
   }
-  .bigEmoji{ font-size: 2.6rem; margin-bottom:0.2em; }
 </style>
 </head>
 <body>
-<div class="stage">
-
-  <!-- START SCREEN -->
-  <div class="screen" id="screenStart">
-    <h1 class="title">Zou à Poil !</h1>
-    <p class="tagline">Zou le chat roux a des touffes de poil rebelles partout sur le dos.<br>Glisse ton doigt sur chaque touffe pour le raser... le plus vite possible !</p>
-    <div class="panel">
-      <div class="bigEmoji">🐱✂️</div>
-      <p style="margin:0.2em 0 0 0;">3 manches. De plus en plus de touffes.<br>Vise le meilleur temps !</p>
-      <button id="btnStart">Raser Zou</button>
-    </div>
-    <p class="footnote">Astuce : fais glisser ton doigt (ou la souris) directement sur les touffes.</p>
-  </div>
-
-  <!-- LEVEL INTRO SCREEN -->
-  <div class="screen hidden" id="screenLevelIntro">
-    <h1 class="title" style="font-size:clamp(1.6rem,7vw,2.4rem)">Manche <span id="levelNumDisplay">1</span></h1>
-    <div class="panel">
-      <p id="levelIntroText" style="margin:0;">8 touffes à raser. C'est parti !</p>
-      <button id="btnLevelGo">Go !</button>
-    </div>
-  </div>
-
-  <!-- GAME SCREEN -->
-  <div class="screen hidden" id="screenGame" style="justify-content:flex-start; padding-top:0.5em;">
+<div id="canvas-container">
+  <canvas id="gameCanvas"></canvas>
+  <div id="ui-overlay">
     <div id="hud">
-      <div class="chip">⏱️ <span id="timerDisplay">0.0</span> s</div>
-      <div class="chip">Manche <span id="hudLevel">1</span>/3</div>
-      <div class="chip">🪮 <span id="tuftsLeft">8</span></div>
+      <div class="hud-box">✂️ Clics : <span id="click-count">0</span></div>
+      <div class="hud-box">🪮 Poils restants : <span id="fur-count">100</span>%</div>
+      <div class="hud-box">😹 Zou : <span id="mood">Zzz...</span></div>
     </div>
-    <div id="progressWrap"><div id="progressBar"></div></div>
-    <div id="wrapCanvas">
-      <canvas id="game"></canvas>
+    <div id="phase-label" id="phase-label"></div>
+    <div id="fur-bar-container">
+      <div id="fur-label">🧡 Pelage de Zou</div>
+      <div id="fur-bar-bg"><div id="fur-bar"></div></div>
+    </div>
+    <div id="cursor-hint">✂️ Clique sur Zou pour le raser !</div>
+    <div id="snore">💤 ZZZ...</div>
+
+    <div id="message-panel">
+      <h2 id="msg-title">Opération Toilettage !</h2>
+      <p id="msg-body"></p>
+      <button id="msg-btn" onclick="startGame()">C'est parti !</button>
     </div>
   </div>
-
-  <!-- LEVEL COMPLETE SCREEN -->
-  <div class="screen hidden" id="screenLevelDone">
-    <div class="bigEmoji">😼✨</div>
-    <h1 class="title" style="font-size:clamp(1.6rem,7vw,2.2rem)">Manche terminée !</h1>
-    <div class="panel">
-      <p id="levelDoneText" style="margin:0;">Temps : 0.0 s</p>
-      <button id="btnNextLevel">Manche suivante</button>
-    </div>
-  </div>
-
-  <!-- GAME OVER / FINAL SCREEN -->
-  <div class="screen hidden" id="screenFinal">
-    <div class="bigEmoji" id="finalEmoji">🏆</div>
-    <h1 class="title" style="font-size:clamp(1.8rem,8vw,2.6rem)">Zou est tout lisse !</h1>
-    <div class="panel">
-      <p id="finalRank" style="font-weight:bold; font-size:1.2rem; margin:0 0 0.3em 0;">Titre : ...</p>
-      <p id="finalTime" style="margin:0;">Temps total : 0.0 s</p>
-      <p id="finalQuip" style="margin:0.6em 0 0 0; color:#7a5a3a; font-style:italic;"></p>
-      <button id="btnReplay">Rejouer</button>
-    </div>
-  </div>
-
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-(function(){
-  "use strict";
+// ─── GAME STATE ──────────────────────────────────────────────────────────────
+let furLevel = 100;
+let clickCount = 0;
+let gamePhase = 'intro'; // intro, sleeping, awake, hiding, caught, done
+let phaseTimer = 0;
+let hideTarget = null;
+let isHidden = false;
+let shakeTime = 0;
+let gameActive = false;
+let hideSpots = [];
+let currentHideSpot = 0;
+let wakeWarning = false;
+let sneezeTime = 0;
 
-  // ---------- Config ----------
-  const LEVELS = [
-    { tufts: 8,  shaveRadius: 26 },
-    { tufts: 13, shaveRadius: 23 },
-    { tufts: 18, shaveRadius: 21 }
-  ];
+// ─── THREE.JS SETUP ──────────────────────────────────────────────────────────
+const canvas = document.getElementById('gameCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setSize(window.innerWidth, window.innerHeight);
 
-  const COLORS = {
-    body: '#D97B29',
-    bodyShade: '#C66E1F',
-    stripe: '#A85618',
-    head: '#DC8332',
-    ear: '#C66E1F',
-    earInner: '#F2A9A0',
-    skin: '#F7D9C4',
-    skinShade: '#EFC3A5',
-    tuftBase: '#F2B66D',
-    tuftDark: '#E29A45',
-    eyeWhite: '#FFFFFF',
-    iris: '#7DBF4B',
-    pupil: '#2B2118',
-    nose: '#D9788A',
-    whisker: '#5a4631'
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a0a2e);
+scene.fog = new THREE.Fog(0x1a0a2e, 18, 40);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 100);
+camera.position.set(0, 4, 9);
+camera.lookAt(0, 1, 0);
+
+// ─── LIGHTS ──────────────────────────────────────────────────────────────────
+const ambientLight = new THREE.AmbientLight(0xffd0a0, 0.5);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xffe0b0, 1.2);
+sunLight.position.set(5, 10, 5);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 1024;
+sunLight.shadow.mapSize.height = 1024;
+scene.add(sunLight);
+
+const lampLight = new THREE.PointLight(0xff9944, 1.5, 12);
+lampLight.position.set(-3, 4, 2);
+scene.add(lampLight);
+
+const rimLight = new THREE.DirectionalLight(0x8844ff, 0.4);
+rimLight.position.set(-5, 3, -5);
+scene.add(rimLight);
+
+// ─── ROOM / ENVIRONMENT ──────────────────────────────────────────────────────
+// Floor
+const floorGeo = new THREE.PlaneGeometry(20, 20);
+const floorMat = new THREE.MeshLambertMaterial({ color: 0x4a3020 });
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI/2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Rug
+const rugGeo = new THREE.PlaneGeometry(8, 6);
+const rugMat = new THREE.MeshLambertMaterial({ color: 0x8b2252 });
+const rug = new THREE.Mesh(rugGeo, rugMat);
+rug.rotation.x = -Math.PI/2;
+rug.position.y = 0.01;
+scene.add(rug);
+
+// Back wall
+const wallGeo = new THREE.PlaneGeometry(20, 10);
+const wallMat = new THREE.MeshLambertMaterial({ color: 0x2d1b4e });
+const backWall = new THREE.Mesh(wallGeo, wallMat);
+backWall.position.set(0, 5, -8);
+scene.add(backWall);
+
+// Sofa
+const sofaGroup = new THREE.Group();
+const sofaBody = new THREE.Mesh(new THREE.BoxGeometry(5, 1.2, 2), new THREE.MeshLambertMaterial({color: 0x6b2d8b}));
+sofaBody.position.set(0, 0.6, -3);
+sofaBody.castShadow = true; sofaBody.receiveShadow = true;
+sofaGroup.add(sofaBody);
+const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(5, 1.6, 0.3), new THREE.MeshLambertMaterial({color: 0x5a2070}));
+sofaBack.position.set(0, 1.7, -3.85);
+sofaBack.castShadow = true;
+sofaGroup.add(sofaBack);
+const sofaArmL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.5, 2), new THREE.MeshLambertMaterial({color: 0x5a2070}));
+sofaArmL.position.set(-2.5, 1.15, -3);
+sofaGroup.add(sofaArmL);
+const sofaArmR = sofaArmL.clone(); sofaArmR.position.x = 2.5;
+sofaGroup.add(sofaArmR);
+scene.add(sofaGroup);
+hideSpots.push({ pos: new THREE.Vector3(0, 0.5, -3), label: "derrière le canapé" });
+
+// Table
+const tableTop = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.1, 1.5), new THREE.MeshLambertMaterial({color: 0x8b5e3c}));
+tableTop.position.set(3.5, 1.1, 1);
+tableTop.castShadow = true;
+scene.add(tableTop);
+for(let i=0;i<4;i++){
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1,1.1,0.1), new THREE.MeshLambertMaterial({color:0x6b4020}));
+  leg.position.set(3.5+(i<2?-1:1)*0.9, 0.55, 1+(i%2===0?-0.6:0.6));
+  scene.add(leg);
+}
+hideSpots.push({ pos: new THREE.Vector3(3.5, 0.3, 1), label: "sous la table" });
+
+// Curtain / hiding spot
+const curtainGeo = new THREE.BoxGeometry(1.5, 4, 0.2);
+const curtainMat = new THREE.MeshLambertMaterial({ color: 0x1a6644 });
+const curtain = new THREE.Mesh(curtainGeo, curtainMat);
+curtain.position.set(-5, 2, -3);
+scene.add(curtain);
+hideSpots.push({ pos: new THREE.Vector3(-5, 0.5, -2.5), label: "derrière le rideau" });
+
+// Plant pot
+const potGeo = new THREE.CylinderGeometry(0.3,0.4,0.6,8);
+const pot = new THREE.Mesh(potGeo, new THREE.MeshLambertMaterial({color:0xc0522a}));
+pot.position.set(-3, 0.3, 1);
+scene.add(pot);
+const plantGeo = new THREE.SphereGeometry(0.6,8,8);
+const plant = new THREE.Mesh(plantGeo, new THREE.MeshLambertMaterial({color:0x2d8b2d}));
+plant.position.set(-3, 1.1, 1);
+scene.add(plant);
+
+// ─── ZOU THE CAT ─────────────────────────────────────────────────────────────
+const zouGroup = new THREE.Group();
+
+// Fur layers (will disappear as we shave)
+const furLayers = [];
+
+// Body
+const bodyGeo = new THREE.SphereGeometry(0.7, 16, 12);
+const bodyMat = new THREE.MeshLambertMaterial({ color: 0xff8c44 });
+const body = new THREE.Mesh(bodyGeo, bodyMat);
+body.scale.set(1.2, 1, 1.1);
+body.position.y = 0.7;
+body.castShadow = true;
+zouGroup.add(body);
+
+// Head
+const headGeo = new THREE.SphereGeometry(0.5, 16, 12);
+const headMat = new THREE.MeshLambertMaterial({ color: 0xff8c44 });
+const head = new THREE.Mesh(headGeo, headMat);
+head.position.set(0, 1.7, 0.5);
+head.castShadow = true;
+zouGroup.add(head);
+
+// Snout
+const snoutGeo = new THREE.SphereGeometry(0.22, 10, 8);
+const snoutMat = new THREE.MeshLambertMaterial({ color: 0xffb380 });
+const snout = new THREE.Mesh(snoutGeo, snoutMat);
+snout.position.set(0, 1.62, 0.9);
+snout.scale.set(1, 0.7, 0.8);
+zouGroup.add(snout);
+
+// Nose
+const noseGeo = new THREE.SphereGeometry(0.06, 8, 8);
+const noseMat = new THREE.MeshLambertMaterial({ color: 0xff6688 });
+const nose = new THREE.Mesh(noseGeo, noseMat);
+nose.position.set(0, 1.66, 1.08);
+zouGroup.add(nose);
+
+// Eyes
+function makeEye(x) {
+  const g = new THREE.Group();
+  const white = new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8), new THREE.MeshLambertMaterial({color:0xffffff}));
+  white.scale.set(1,0.8,0.6);
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.065,8,8), new THREE.MeshLambertMaterial({color:0x111111}));
+  pupil.position.z = 0.05;
+  const shine = new THREE.Mesh(new THREE.SphereGeometry(0.025,6,6), new THREE.MeshLambertMaterial({color:0xffffff}));
+  shine.position.set(0.025, 0.025, 0.09);
+  g.add(white); g.add(pupil); g.add(shine);
+  g.position.set(x, 1.76, 0.86);
+  return g;
+}
+const eyeL = makeEye(-0.18);
+const eyeR = makeEye(0.18);
+zouGroup.add(eyeL); zouGroup.add(eyeR);
+
+// Ears
+function makeEar(x) {
+  const g = new THREE.ConeGeometry(0.18, 0.35, 3);
+  const m = new THREE.MeshLambertMaterial({ color: 0xff8c44 });
+  const ear = new THREE.Mesh(g, m);
+  ear.position.set(x, 2.1, 0.45);
+  ear.rotation.z = x < 0 ? -0.3 : 0.3;
+  const inner = new THREE.Mesh(new THREE.ConeGeometry(0.1,0.2,3), new THREE.MeshLambertMaterial({color:0xffb3b3}));
+  inner.position.set(x, 2.1, 0.45);
+  inner.rotation.z = x < 0 ? -0.3 : 0.3;
+  zouGroup.add(ear); zouGroup.add(inner);
+}
+makeEar(-0.32); makeEar(0.32);
+
+// Tail
+const tailCurve = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0, 0.6, -0.8),
+  new THREE.Vector3(-0.5, 1.2, -1.0),
+  new THREE.Vector3(-0.3, 1.8, -0.7),
+  new THREE.Vector3(0.1, 1.6, -0.5)
+]);
+const tailGeo = new THREE.TubeGeometry(tailCurve, 12, 0.08, 6, false);
+const tailMat = new THREE.MeshLambertMaterial({ color: 0xff8c44 });
+const tail = new THREE.Mesh(tailGeo, tailMat);
+zouGroup.add(tail);
+
+// Legs
+function makeLeg(x, z) {
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,0.5,8), new THREE.MeshLambertMaterial({color:0xff8c44}));
+  leg.position.set(x, 0.25, z);
+  const paw = new THREE.Mesh(new THREE.SphereGeometry(0.14,8,8), new THREE.MeshLambertMaterial({color:0xffb380}));
+  paw.position.set(x, 0.0, z);
+  paw.scale.set(1.2,0.7,1.4);
+  zouGroup.add(leg); zouGroup.add(paw);
+}
+makeLeg(-0.4, 0.4); makeLeg(0.4, 0.4);
+makeLeg(-0.4, -0.4); makeLeg(0.4, -0.4);
+
+// FUR BALLS — fluffy pom-poms around the body
+const furBallPositions = [
+  {x:0,y:1.1,z:0.7},{x:-0.5,y:0.9,z:0.4},{x:0.5,y:0.9,z:0.4},
+  {x:0,y:0.6,z:0},{x:-0.6,y:1.0,z:-0.2},{x:0.6,y:1.0,z:-0.2},
+  {x:0,y:1.4,z:-0.2},{x:-0.3,y:0.5,z:0.6},{x:0.3,y:0.5,z:0.6},
+  {x:-0.2,y:1.5,z:0.5},{x:0.2,y:1.5,z:0.5},
+  {x:-0.8,y:0.8,z:0},{x:0.8,y:0.8,z:0},
+  {x:0,y:0.4,z:-0.5},{x:-0.5,y:1.3,z:0.3},{x:0.5,y:1.3,z:0.3},
+  {x:0.1,y:1.8,z:0.3},{x:-0.4,y:0.3,z:0.0},{x:0.4,y:0.3,z:0.0},
+  {x:0,y:1.1,z:-0.6}
+];
+
+const furColors = [0xff8c44, 0xffa066, 0xffb380, 0xff7733, 0xffcc99];
+furBallPositions.forEach((pos, i) => {
+  const size = 0.12 + Math.random() * 0.14;
+  const furBall = new THREE.Mesh(
+    new THREE.SphereGeometry(size, 8, 8),
+    new THREE.MeshLambertMaterial({ color: furColors[i % furColors.length] })
+  );
+  furBall.position.set(pos.x, pos.y, pos.z);
+  furBall.castShadow = true;
+  zouGroup.add(furBall);
+  furLayers.push(furBall);
+});
+
+// Blush cheeks
+function makeBlush(x) {
+  const b = new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8), new THREE.MeshLambertMaterial({color:0xff8888,transparent:true,opacity:0.5}));
+  b.position.set(x, 1.62, 0.88);
+  b.scale.set(1.5,0.8,0.3);
+  zouGroup.add(b);
+}
+makeBlush(-0.28); makeBlush(0.28);
+
+zouGroup.position.set(0, 0, 1);
+scene.add(zouGroup);
+
+// ─── SCISSORS INDICATOR ───────────────────────────────────────────────────────
+const scissorsGroup = new THREE.Group();
+// Blade 1
+const blade1 = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.4,0.04),new THREE.MeshLambertMaterial({color:0xcccccc}));
+blade1.position.x = -0.03;
+blade1.rotation.z = 0.3;
+const blade2 = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.4,0.04),new THREE.MeshLambertMaterial({color:0xaaaaaa}));
+blade2.position.x = 0.03;
+blade2.rotation.z = -0.3;
+scissorsGroup.add(blade1); scissorsGroup.add(blade2);
+scissorsGroup.visible = false;
+scene.add(scissorsGroup);
+
+// ─── RAYCASTER ───────────────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let catMeshes = [];
+zouGroup.traverse(obj => { if(obj.isMesh) catMeshes.push(obj); });
+
+// ─── UI HELPERS ──────────────────────────────────────────────────────────────
+const msgPanel = document.getElementById('message-panel');
+const msgTitle = document.getElementById('msg-title');
+const msgBody  = document.getElementById('msg-body');
+const msgBtn   = document.getElementById('msg-btn');
+const snoreEl  = document.getElementById('snore');
+const phaseLabel = document.getElementById('phase-label');
+
+function showMessage(title, body, btnText, callback) {
+  msgTitle.textContent = title;
+  msgBody.innerHTML = body;
+  msgBtn.textContent = btnText;
+  msgPanel.style.display = 'block';
+  msgBtn.onclick = () => {
+    msgPanel.style.display = 'none';
+    if(callback) callback();
   };
+}
 
-  // ---------- State ----------
-  let canvas, ctx;
-  let cw = 0, ch = 0, dpr = 1;
-  let currentLevel = 0;
-  let tufts = [];
-  let pointerActive = false;
-  let pointerX = -1000, pointerY = -1000;
-  let levelStartTime = 0;
-  let elapsed = 0;
-  let rafId = null;
-  let levelTimes = [];
-  let sparkles = []; // little particle bursts when a tuft is shaved
-  let totalTuftsThisLevel = 0;
+function hideMessage() { msgPanel.style.display = 'none'; }
 
-  // Zones (relative 0..1 of canvas) where tufts may appear: body + head sides + tail, avoiding the face.
-  // Defined in normalized "design space" 400x520, will scale to actual canvas.
-  const DESIGN_W = 400, DESIGN_H = 520;
+function updateHUD() {
+  document.getElementById('click-count').textContent = clickCount;
+  document.getElementById('fur-count').textContent = Math.round(furLevel);
+  document.getElementById('fur-bar').style.width = furLevel + '%';
+  // Mood
+  let mood = 'Zzz...';
+  if(gamePhase === 'awake') mood = '😾 Méfiant !';
+  else if(gamePhase === 'hiding') mood = '🙈 Caché !';
+  else if(gamePhase === 'caught') mood = '😹 Attrapé !';
+  else if(gamePhase === 'done') mood = '✨ Magnifique !';
+  else if(isHidden) mood = '🫣 Oh non !';
+  document.getElementById('mood').textContent = mood;
+}
 
-  const ZONES = [
-    // body (big oval)
-    { cx:200, cy:330, rx:135, ry:150, weight:5 },
-    // head sides (avoid center face)
-    { cx:120, cy:150, rx:55, ry:60, weight:2 },
-    { cx:280, cy:150, rx:55, ry:60, weight:2 },
-    { cx:200, cy:110, rx:60, ry:35, weight:1.5 }, // top of head
-    // tail
-    { cx:330, cy:380, rx:55, ry:90, weight:2.5 }
-  ];
-
-  // Face exclusion box (design space) - keep this clean of tufts
-  const FACE_EXCLUDE = { x:140, y:140, w:120, h:90 };
-
-  function rand(min, max){ return Math.random()*(max-min)+min; }
-
-  function pickWeightedZone(){
-    const total = ZONES.reduce((s,z)=>s+z.weight,0);
-    let r = Math.random()*total;
-    for(const z of ZONES){
-      if(r < z.weight) return z;
-      r -= z.weight;
-    }
-    return ZONES[0];
+// ─── HAIR PARTICLE FX ────────────────────────────────────────────────────────
+function spawnHairFX(clientX, clientY) {
+  const emojis = ['🧡','🪮','〰️','✨','🌀','💫'];
+  for(let i = 0; i < 5; i++) {
+    const el = document.createElement('div');
+    el.className = 'hair-pop';
+    el.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    el.style.left = clientX + 'px';
+    el.style.top = clientY + 'px';
+    const dx = (Math.random()-0.5)*120;
+    const dy = -60 - Math.random()*80;
+    el.style.setProperty('--dx', dx+'px');
+    el.style.setProperty('--dy', dy+'px');
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 1300);
   }
+}
 
-  function randomPointInEllipse(z){
-    // uniform-ish random point inside ellipse
-    const t = Math.random()*Math.PI*2;
-    const u = Math.sqrt(Math.random());
-    const x = z.cx + z.rx*u*Math.cos(t);
-    const y = z.cy + z.ry*u*Math.sin(t);
-    return {x,y};
-  }
+// ─── GAME PHASES ─────────────────────────────────────────────────────────────
+function startGame() {
+  gamePhase = 'sleeping';
+  gameActive = true;
+  hideMessage();
+  snoreEl.style.display = 'block';
+  phaseLabel.textContent = '💤 Zou dort... Approchez doucement !';
+  zouGroup.position.set(0, 0, 1);
+}
 
-  function inFaceExclusion(x,y){
-    return x > FACE_EXCLUDE.x && x < FACE_EXCLUDE.x+FACE_EXCLUDE.w &&
-           y > FACE_EXCLUDE.y && y < FACE_EXCLUDE.y+FACE_EXCLUDE.h;
-  }
+function triggerAwake() {
+  gamePhase = 'awake';
+  snoreEl.style.display = 'none';
+  wakeWarning = true;
+  phaseLabel.textContent = '😾 Zou se réveille ! Vite, rasez-le avant qu\'il se cache !';
+  // Eye open animation — handled in update
+}
 
-  function generateTufts(n){
-    const list = [];
-    let attempts = 0;
-    while(list.length < n && attempts < n*200){
-      attempts++;
-      const z = pickWeightedZone();
-      const p = randomPointInEllipse(z);
-      if(inFaceExclusion(p.x,p.y)) continue;
-      // min distance from existing tufts
-      let ok = true;
-      for(const t of list){
-        const d = Math.hypot(t.x-p.x, t.y-p.y);
-        if(d < 34){ ok = false; break; }
-      }
-      if(!ok) continue;
-      list.push({
-        x: p.x, y: p.y,
-        rot: rand(0, Math.PI*2),
-        scale: rand(0.85, 1.25),
-        removed: false
-      });
-    }
-    return list;
-  }
+function triggerHide() {
+  gamePhase = 'hiding';
+  isHidden = true;
+  currentHideSpot = (currentHideSpot + 1) % hideSpots.length;
+  const spot = hideSpots[currentHideSpot];
+  hideTarget = spot.pos.clone();
+  phaseLabel.textContent = `🙈 Zou s\'est caché ${spot.label} ! Retrouvez-le !`;
+  showMessage(
+    '🙈 Il s\'est échappé !',
+    `Zou court se cacher <strong>${spot.label}</strong> ! <br>Il ne veut <em>vraiment pas</em> être rasé... <br>Retrouvez-le et cliquez dessus pour continuer !`,
+    'Je le retrouve !',
+    () => { gamePhase = 'caught'; isHidden = false; }
+  );
+}
 
-  // ---------- Canvas sizing ----------
-  function sizeCanvas(){
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const maxW = Math.min(window.innerWidth*0.94, 420);
-    const maxHAvail = window.innerHeight - 170; // leave room for HUD
-    const aspect = DESIGN_H/DESIGN_W;
-    let w = maxW;
-    let h = w*aspect;
-    if(h > maxHAvail){
-      h = maxHAvail;
-      w = h/aspect;
-    }
-    cw = Math.round(w); ch = Math.round(h);
-    canvas.style.width = cw+'px';
-    canvas.style.height = ch+'px';
-    canvas.width = Math.round(cw*dpr);
-    canvas.height = Math.round(ch*dpr);
-    ctx.setTransform(dpr*(cw/DESIGN_W), 0, 0, dpr*(ch/DESIGN_H), 0, 0);
-  }
-
-  // ---------- Drawing helpers ----------
-  function drawEllipse(x,y,rx,ry,fill){
-    ctx.beginPath();
-    ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);
-    ctx.fillStyle = fill;
-    ctx.fill();
-  }
-
-  function drawStripe(x1,y1,x2,y2,cx,cy,w){
-    ctx.beginPath();
-    ctx.moveTo(x1,y1);
-    ctx.quadraticCurveTo(cx,cy,x2,y2);
-    ctx.strokeStyle = COLORS.stripe;
-    ctx.lineWidth = w;
-    ctx.lineCap = 'round';
-    ctx.globalAlpha = 0.55;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-
-  function drawCatBase(){
-    ctx.clearRect(0,0,DESIGN_W,DESIGN_H);
-
-    // ground shadow
-    ctx.beginPath();
-    ctx.ellipse(200, 470, 150, 24, 0, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(120,90,50,0.18)';
-    ctx.fill();
-
-    // tail (behind body)
-    ctx.save();
-    ctx.translate(330,380);
-    ctx.rotate(0.35);
-    drawEllipse(0,0,32,95,COLORS.body);
-    ctx.restore();
-    // tail stripes
-    drawStripe(345,310,345,330,365,320,7);
-    drawStripe(340,350,340,370,362,360,7);
-    drawStripe(330,390,330,410,355,400,7);
-
-    // back paws hint
-    drawEllipse(120,455,34,20,COLORS.body);
-    drawEllipse(255,460,34,20,COLORS.body);
-
-    // body
-    drawEllipse(200,335,140,150,COLORS.body);
-    // belly lighter patch
-    drawEllipse(205,395,75,80,'#E69A52');
-
-    // body stripes
-    drawStripe(90,240,90,300,70,270,9);
-    drawStripe(310,240,310,300,330,270,9);
-    drawStripe(120,220,140,260,110,240,8);
-    drawStripe(280,220,260,260,290,240,8);
-
-    // front paws
-    drawEllipse(160,470,26,22,COLORS.skin);
-    drawEllipse(240,470,26,22,COLORS.skin);
-    drawStripe(150,455,150,480,140,468,3);
-    drawStripe(170,455,170,480,160,468,3);
-    drawStripe(230,455,230,480,220,468,3);
-    drawStripe(250,455,250,480,240,468,3);
-
-    // ears (behind head, drawn first)
-    drawEllipse(135,95,28,34,COLORS.ear);
-    drawEllipse(265,95,28,34,COLORS.ear);
-    ctx.save();
-    ctx.translate(135,100); ctx.rotate(0);
-    ctx.beginPath(); ctx.ellipse(0,0,14,18,0,0,Math.PI*2);
-    ctx.fillStyle = COLORS.earInner; ctx.fill();
-    ctx.restore();
-    ctx.save();
-    ctx.translate(265,100);
-    ctx.beginPath(); ctx.ellipse(0,0,14,18,0,0,Math.PI*2);
-    ctx.fillStyle = COLORS.earInner; ctx.fill();
-    ctx.restore();
-
-    // head
-    drawEllipse(200,150,98,90,COLORS.head);
-
-    // head stripes (forehead "M")
-    ctx.beginPath();
-    ctx.moveTo(170,80);
-    ctx.lineTo(185,100);
-    ctx.lineTo(200,82);
-    ctx.lineTo(215,100);
-    ctx.lineTo(230,80);
-    ctx.strokeStyle = COLORS.stripe;
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.globalAlpha = 0.6;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-
-    drawStripe(150,120,140,140,140,128,6);
-    drawStripe(250,120,260,140,260,128,6);
-  }
-
-  function drawFace(){
-    // cheeks
-    drawEllipse(155,175,26,18,'#FFFFFF');
-    drawEllipse(245,175,26,18,'#FFFFFF');
-
-    // eyes
-    function eye(x,y){
-      ctx.beginPath();
-      ctx.ellipse(x,y,16,18,0,0,Math.PI*2);
-      ctx.fillStyle = COLORS.eyeWhite;
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(x,y+1,9,11,0,0,Math.PI*2);
-      ctx.fillStyle = COLORS.iris;
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(x,y+1,4,9,0,0,Math.PI*2);
-      ctx.fillStyle = COLORS.pupil;
-      ctx.fill();
-      // sparkle
-      ctx.beginPath();
-      ctx.arc(x-3,y-4,2,0,Math.PI*2);
-      ctx.fillStyle = '#fff';
-      ctx.fill();
-    }
-    eye(168,150);
-    eye(232,150);
-
-    // nose
-    ctx.beginPath();
-    ctx.moveTo(200,170);
-    ctx.lineTo(192,180);
-    ctx.lineTo(208,180);
-    ctx.closePath();
-    ctx.fillStyle = COLORS.nose;
-    ctx.fill();
-
-    // mouth
-    ctx.beginPath();
-    ctx.moveTo(200,181);
-    ctx.lineTo(200,190);
-    ctx.moveTo(200,190);
-    ctx.quadraticCurveTo(188,200,178,193);
-    ctx.moveTo(200,190);
-    ctx.quadraticCurveTo(212,200,222,193);
-    ctx.strokeStyle = COLORS.whisker;
-    ctx.lineWidth = 2.4;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-
-    // whiskers
-    ctx.lineWidth = 1.6;
-    ctx.strokeStyle = 'rgba(90,70,49,0.7)';
-    [[-1,178,165],[-1,182,172],[-1,178,180]].forEach(([dir,wy,wx])=>{
-      ctx.beginPath();
-      ctx.moveTo(150,wy);
-      ctx.lineTo(150-34,wy-4);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(250,wy);
-      ctx.lineTo(250+34,wy-4);
-      ctx.stroke();
-    });
-  }
-
-  function drawShavedPatches(){
-    for(const t of tufts){
-      if(!t.removed) continue;
-      ctx.save();
-      ctx.translate(t.x,t.y);
-      ctx.rotate(t.rot);
-      const s = t.scale;
-      drawEllipse(0,0,16*s,12*s, COLORS.skin);
-      // little stubble marks
-      ctx.strokeStyle = COLORS.skinShade;
-      ctx.lineWidth = 1.4;
-      for(let i=0;i<4;i++){
-        const a = (i/4)*Math.PI*2;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a)*4*s, Math.sin(a)*3*s);
-        ctx.lineTo(Math.cos(a)*8*s, Math.sin(a)*6*s);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-  }
-
-  function drawTuft(t){
-    ctx.save();
-    ctx.translate(t.x,t.y);
-    ctx.rotate(t.rot);
-    const s = t.scale;
-    // fluffy cluster: a base blob + spiky tips
-    drawEllipse(0,0,15*s,11*s, COLORS.tuftBase);
-    const spikes = 6;
-    for(let i=0;i<spikes;i++){
-      const a = (i/spikes)*Math.PI*2 + t.rot*0.3;
-      const len = (10+ (i%2)*5)*s;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a)*4*s, Math.sin(a)*3*s);
-      ctx.quadraticCurveTo(
-        Math.cos(a+0.15)*len*0.7, Math.sin(a+0.15)*len*0.7,
-        Math.cos(a)*len, Math.sin(a)*len*0.8
+function checkWin() {
+  if(furLevel <= 0) {
+    furLevel = 0;
+    gamePhase = 'done';
+    gameActive = false;
+    setTimeout(()=>{
+      showMessage(
+        '🎉 Zou est rasé de frais !',
+        `Bravo ! Zou le chat roux est enfin débarrassé de ses boules de poils ! <br><br>Il est <strong>magnifique</strong> (et un peu vexé, mais ça lui passera 😺).<br><br>Il a tenté de se cacher <strong>${Math.max(0, currentHideSpot)}</strong> fois mais vous avez été plus malin(e) que lui ! <br><br>Total de clics : <strong>${clickCount}</strong>`,
+        '🔁 Rejouer',
+        () => { location.reload(); }
       );
-      ctx.lineWidth = 3.2*s;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = i%2===0 ? COLORS.tuftBase : COLORS.tuftDark;
-      ctx.stroke();
+    }, 500);
+  }
+}
+
+// ─── CLICK HANDLER ───────────────────────────────────────────────────────────
+canvas.addEventListener('click', (e) => {
+  if(!gameActive) return;
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(catMeshes);
+  if(hits.length > 0) {
+    clickCount++;
+    const reduction = 1.5 + Math.random();
+    furLevel = Math.max(0, furLevel - reduction);
+
+    // Remove fur balls progressively
+    const furIdx = Math.floor((1 - furLevel/100) * furLayers.length);
+    for(let i = 0; i < furLayers.length; i++) {
+      furLayers[i].visible = i >= furIdx;
     }
-    drawEllipse(0,0,7*s,5*s, COLORS.tuftDark);
-    ctx.restore();
-  }
 
-  function drawSparkles(dt){
-    for(let i=sparkles.length-1;i>=0;i--){
-      const sp = sparkles[i];
-      sp.life -= dt;
-      if(sp.life<=0){ sparkles.splice(i,1); continue; }
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, sp.life/sp.maxLife);
-      ctx.translate(sp.x,sp.y);
-      ctx.rotate(sp.rot);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      const r = 6*(sp.life/sp.maxLife);
-      ctx.moveTo(0,-r); ctx.lineTo(r*0.3,0); ctx.lineTo(0,r); ctx.lineTo(-r*0.3,0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-      sp.x += sp.vx*dt; sp.y += sp.vy*dt;
+    shakeTime = 0.4;
+    spawnHairFX(e.clientX, e.clientY);
+    updateHUD();
+
+    // Phase transitions
+    if(gamePhase === 'sleeping' && clickCount >= 5 && Math.random() < 0.3) {
+      triggerAwake();
     }
-  }
-
-  function drawCursor(){
-    if(pointerX < -500) return;
-    ctx.save();
-    ctx.translate(pointerX,pointerY);
-    // simple razor icon: handle + blade
-    ctx.rotate(-0.5);
-    ctx.fillStyle = '#cfd6dc';
-    ctx.fillRect(-4,0,8,26);
-    ctx.fillStyle = '#8a939b';
-    ctx.beginPath();
-    ctx.moveTo(-10,-2);
-    ctx.lineTo(10,-2);
-    ctx.lineTo(7,-14);
-    ctx.lineTo(-7,-14);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#eef3f6';
-    ctx.fillRect(-8,-3,16,3);
-    ctx.restore();
-  }
-
-  let lastFrameTime = performance.now();
-  function renderLoop(){
-    const now = performance.now();
-    const dt = Math.min((now-lastFrameTime)/1000, 0.05);
-    lastFrameTime = now;
-
-    drawCatBase();
-    drawShavedPatches();
-    for(const t of tufts){ if(!t.removed) drawTuft(t); }
-    drawFace();
-    drawSparkles(dt);
-    drawCursor();
-
-    if(!allShaved()){
-      elapsed = (now - levelStartTime)/1000;
-      timerDisplayEl.textContent = elapsed.toFixed(1);
-      rafId = requestAnimationFrame(renderLoop);
+    if(gamePhase === 'awake' && clickCount > 0 && (clickCount % 12 === 0) && furLevel > 15) {
+      triggerHide();
+    }
+    if(gamePhase === 'caught' || gamePhase === 'awake' || gamePhase === 'sleeping') {
+      checkWin();
     }
   }
+});
 
-  function allShaved(){
-    return tufts.every(t=>t.removed);
+canvas.addEventListener('mousemove', (e) => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(catMeshes);
+  canvas.style.cursor = hits.length > 0 ? 'crosshair' : 'default';
+  // Move scissor indicator
+  if(hits.length > 0) {
+    scissorsGroup.visible = true;
+    scissorsGroup.position.copy(hits[0].point);
+    scissorsGroup.position.y += 0.3;
+  } else {
+    scissorsGroup.visible = false;
+  }
+});
+
+// ─── ANIMATION LOOP ──────────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+let t = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  t += dt;
+
+  // Cat bobbing / breathing
+  const breathe = Math.sin(t * 1.5) * 0.04;
+  body.scale.y = 1 + breathe;
+
+  // Tail wagging
+  tail.rotation.y = Math.sin(t * 2) * 0.4;
+  tail.rotation.x = Math.sin(t * 1.3) * 0.15;
+
+  // Eye blinking
+  const blinkCycle = Math.sin(t * 1.2);
+  const blink = blinkCycle > 0.98;
+  eyeL.scale.y = blink ? 0.1 : 1;
+  eyeR.scale.y = blink ? 0.1 : 1;
+
+  // Phase: sleeping — curl down
+  if(gamePhase === 'sleeping') {
+    zouGroup.rotation.x = Math.sin(t*0.5)*0.05;
+    // snore bounce
+    snoreEl.style.opacity = 0.6 + 0.4*Math.sin(t*2);
   }
 
-  function addSparkle(x,y){
-    for(let i=0;i<6;i++){
-      const a = rand(0,Math.PI*2);
-      sparkles.push({
-        x,y, rot:a,
-        vx: Math.cos(a)*rand(20,50),
-        vy: Math.sin(a)*rand(20,50) - 20,
-        life: rand(0.3,0.55), maxLife: 0.5
-      });
-    }
+  // Phase: awake — look around nervously
+  if(gamePhase === 'awake') {
+    head.rotation.y = Math.sin(t * 3) * 0.4;
+    head.rotation.x = Math.sin(t * 2.1) * 0.15;
+    zouGroup.rotation.y = Math.sin(t * 1.5) * 0.2;
   }
 
-  // ---------- Pointer handling ----------
-  function getPos(evt){
-    const rect = canvas.getBoundingClientRect();
-    const clientX = evt.clientX !== undefined ? evt.clientX : (evt.touches && evt.touches[0].clientX);
-    const clientY = evt.clientY !== undefined ? evt.clientY : (evt.touches && evt.touches[0].clientY);
-    const xCss = clientX - rect.left;
-    const yCss = clientY - rect.top;
-    return {
-      x: xCss * (DESIGN_W/cw),
-      y: yCss * (DESIGN_H/ch)
-    };
+  // Phase: hiding — move cat to hiding spot
+  if(gamePhase === 'hiding' && hideTarget) {
+    zouGroup.position.lerp(hideTarget, 0.05);
+    zouGroup.rotation.y += dt * 2;
+    // Make cat smaller as it "hides"
+    zouGroup.scale.lerp(new THREE.Vector3(0.4,0.4,0.4), 0.04);
   }
 
-  function tryShaveAt(x,y){
-    const radius = LEVELS[currentLevel].shaveRadius;
-    let shavedAny = false;
-    for(const t of tufts){
-      if(t.removed) continue;
-      const d = Math.hypot(t.x-x, t.y-y);
-      if(d < radius){
-        t.removed = true;
-        shavedAny = true;
-        addSparkle(t.x,t.y);
-      }
-    }
-    if(shavedAny){
-      updateHud();
-      if(allShaved()) onLevelComplete();
-    }
+  // Phase: caught — zoom back
+  if(gamePhase === 'caught') {
+    zouGroup.position.lerp(new THREE.Vector3(0,0,1), 0.06);
+    zouGroup.scale.lerp(new THREE.Vector3(1,1,1), 0.06);
+    zouGroup.rotation.y *= 0.92;
   }
 
-  function onPointerDown(e){
-    pointerActive = true;
-    const p = getPos(e);
-    pointerX = p.x; pointerY = p.y;
-    tryShaveAt(p.x,p.y);
-    e.preventDefault();
-  }
-  function onPointerMove(e){
-    const p = getPos(e);
-    pointerX = p.x; pointerY = p.y;
-    if(pointerActive) tryShaveAt(p.x,p.y);
-    e.preventDefault();
-  }
-  function onPointerUp(e){
-    pointerActive = false;
+  // Phase: done — happy spin
+  if(gamePhase === 'done') {
+    zouGroup.rotation.y += dt * 1.5;
+    zouGroup.position.y = Math.abs(Math.sin(t*3)) * 0.3;
+    lampLight.intensity = 1.5 + Math.sin(t*5)*0.8;
   }
 
-  // ---------- HUD ----------
-  let timerDisplayEl, tuftsLeftEl, hudLevelEl, progressBarEl;
-
-  function updateHud(){
-    const left = tufts.filter(t=>!t.removed).length;
-    tuftsLeftEl.textContent = left;
-    const done = totalTuftsThisLevel - left;
-    progressBarEl.style.width = (done/totalTuftsThisLevel*100)+'%';
+  // Shake on click
+  if(shakeTime > 0) {
+    shakeTime -= dt;
+    const s = shakeTime * 8;
+    zouGroup.position.x += Math.sin(t*40)*0.02*s;
+    zouGroup.position.y += Math.sin(t*35)*0.01*s;
   }
 
-  // ---------- Screens ----------
-  const screens = {};
-  function showScreen(id){
-    Object.values(screens).forEach(s=>s.classList.add('hidden'));
-    screens[id].classList.remove('hidden');
+  // Lamp flicker
+  lampLight.intensity = 1.4 + Math.sin(t*7)*0.1;
+
+  // Scissor animation
+  if(scissorsGroup.visible) {
+    blade1.rotation.z = 0.3 + Math.sin(t*8)*0.2;
+    blade2.rotation.z = -0.3 - Math.sin(t*8)*0.2;
+    scissorsGroup.rotation.y += dt;
   }
 
-  function startGame(){
-    currentLevel = 0;
-    levelTimes = [];
-    startLevel();
-  }
+  // Camera subtle sway
+  camera.position.x = Math.sin(t*0.3)*0.3;
+  camera.lookAt(0, 1.2, 0);
 
-  function startLevel(){
-    const cfg = LEVELS[currentLevel];
-    document.getElementById('levelNumDisplay').textContent = (currentLevel+1);
-    document.getElementById('levelIntroText').textContent =
-      cfg.tufts + ' touffes à raser. C\'est parti !';
-    showScreen('screenLevelIntro');
-  }
+  renderer.render(scene, camera);
+}
 
-  function beginPlay(){
-    const cfg = LEVELS[currentLevel];
-    tufts = generateTufts(cfg.tufts);
-    totalTuftsThisLevel = tufts.length;
-    sparkles = [];
-    pointerX = -1000; pointerY = -1000;
-    hudLevelEl.textContent = (currentLevel+1);
-    updateHud();
-    sizeCanvas();
-    showScreen('screenGame');
-    levelStartTime = performance.now();
-    lastFrameTime = levelStartTime;
-    if(rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(renderLoop);
-  }
+// ─── INIT ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
-  function onLevelComplete(){
-    if(rafId) cancelAnimationFrame(rafId);
-    const t = elapsed;
-    levelTimes.push(t);
-    document.getElementById('levelDoneText').textContent = 'Temps : ' + t.toFixed(1) + ' s';
-    showScreen('screenLevelDone');
-  }
+// Show intro
+showMessage(
+  '🧡 Opération Zou !',
+  `Zou est un chat roux absolument adorable… mais il a un <strong>énorme problème</strong> : des boules de poils partout ! 🐱<br><br>
+  Il dort profondément sur le canapé. C'est votre chance de le raser ! <br><br>
+  ⚠️ Mais attention — si vous l'agacez trop, il va se <strong>cacher</strong> !<br><br>
+  <em>Cliquez sur Zou pour le raser. Bonne chance !</em>`,
+  '✂️ On commence !',
+  startGame
+);
 
-  function nextLevelOrFinish(){
-    currentLevel++;
-    if(currentLevel >= LEVELS.length){
-      finishGame();
-    } else {
-      startLevel();
-    }
-  }
-
-  function finishGame(){
-    const total = levelTimes.reduce((a,b)=>a+b,0);
-    document.getElementById('finalTime').textContent = 'Temps total : ' + total.toFixed(1) + ' s';
-    let rank, quip, emoji;
-    if(total < 18){
-      rank = '🏆 Maître Tondeur Suprême';
-      quip = 'Zou n\'a même pas eu le temps de miauler.';
-      emoji = '🏆';
-    } else if(total < 30){
-      rank = '🥈 Coiffeur Félin Pro';
-      quip = 'Propre, net, presque trop rapide.';
-      emoji = '✂️';
-    } else if(total < 45){
-      rank = '🥉 Apprenti Tondeur';
-      quip = 'Zou a eu le temps de faire une mini sieste.';
-      emoji = '🐾';
-    } else {
-      rank = '🐌 Tondeur du Dimanche';
-      quip = 'Zou a eu le temps de faire trois siestes et un café.';
-      emoji = '😴';
-    }
-    document.getElementById('finalRank').textContent = 'Titre : ' + rank;
-    document.getElementById('finalQuip').textContent = quip;
-    document.getElementById('finalEmoji').textContent = emoji;
-    showScreen('screenFinal');
-  }
-
-  // ---------- Init ----------
-  window.addEventListener('DOMContentLoaded', ()=>{
-    canvas = document.getElementById('game');
-    ctx = canvas.getContext('2d');
-
-    screens.screenStart = document.getElementById('screenStart');
-    screens.screenLevelIntro = document.getElementById('screenLevelIntro');
-    screens.screenGame = document.getElementById('screenGame');
-    screens.screenLevelDone = document.getElementById('screenLevelDone');
-    screens.screenFinal = document.getElementById('screenFinal');
-
-    timerDisplayEl = document.getElementById('timerDisplay');
-    tuftsLeftEl = document.getElementById('tuftsLeft');
-    hudLevelEl = document.getElementById('hudLevel');
-    progressBarEl = document.getElementById('progressBar');
-
-    document.getElementById('btnStart').addEventListener('click', startGame);
-    document.getElementById('btnLevelGo').addEventListener('click', beginPlay);
-    document.getElementById('btnNextLevel').addEventListener('click', nextLevelOrFinish);
-    document.getElementById('btnReplay').addEventListener('click', startGame);
-
-    canvas.addEventListener('pointerdown', onPointerDown);
-    canvas.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    canvas.addEventListener('pointerleave', ()=>{ pointerX=-1000; pointerY=-1000; });
-
-    window.addEventListener('resize', ()=>{
-      if(!screens.screenGame.classList.contains('hidden')) sizeCanvas();
-    });
-
-    showScreen('screenStart');
-  });
-})();
+animate();
 </script>
 </body>
 </html>
